@@ -58,16 +58,16 @@ class Exportconfig():
         将一个共享添加到shares共享变量中
         :param share:包含字段{share_path, share_clients:{permission, auth, fsid}}
         """
-        share_path = share[share_path]
+        share_path = share['share_path']
         #根据share path是否存在决定如何修改或增加
         #如果共享已经存在，则判断共享client是否存在，如果存在，则不做任何
         if share_path in self.shares:
             for share_host, share_opt in self.shares[share_path].items():
-                if share_host not in share[share_clients]:
+                if share_host not in share['share_clients']:
                     share[share_client][share_host] = share_opt
 
         else:
-            self.shares[share_path] = share[share_clients]
+            self.shares[share_path] = share['share_clients']
 
 
     def remove_share(self, share_path):
@@ -77,8 +77,8 @@ class Exportconfig():
         :return:
         """
         #先检查共享是否存在
-        if share_path in shares:
-            del shares[share_path]
+        if share_path in self.shares:
+            del self.shares[share_path]
         else:
             print('The share path %s not exist', share_path)
 
@@ -93,28 +93,30 @@ class Exportconfig():
         if share_path in self.shares:
             shares[share_path] = share[share_clients]
         else:
-            print('The share path %s not exist', share_path)
+            print('The share path %s not exist', "")
 
 
 
-    def update_nfs_exports():
+    def update_nfs_exports(self, NFSEXPORT_FILE, NFSEXPORT_FILE_BAK, NFSEXPORT_FILE_TMP):
         """备份nfs export配置文件"""
         Exportonfig_bak(NFSEXPORT_FILE, NFSEXPORT_FILE_BAK)
 
         """将shares转换为NFS export的文件格式"""
-        configparse(NFSEXPORT_FILE_TMP)
+        self.configparse(NFSEXPORT_FILE_TMP)
 
         """如何确保修改的文件没有问题"""
 
         """替换当前NFS export文件并重启NFS service"""
-        shutil.mv(NFSEXPORT_FILE_TMP, NFSEXPORT_FILE)
-        subprocess.Popen(shlex.split("systemctl restart nfs"))
+        shutil.move(NFSEXPORT_FILE_TMP, NFSEXPORT_FILE)
 
         """确认返回状态，即命令运行状态"""
 
 
     def configparse(self, tmp_file_path):
         """将shares转换为nfs export文件格式"""
+        #判断临时文件是否存在，如果存在，则删除
+        if os.path.exists(tmp_file_path):
+            os.remove(tmp_file_path)
         tmp_file = open(tmp_file_path, 'a')
         for share_path, share_opts in self.shares.items():
             share_entry = share_path
@@ -136,15 +138,29 @@ def Exportconfig_tmp(nfsexport_file, nfsexport_file_tmp):
     if os.path.isfile(nfsexport_file):
         shutil.copy(nfsexport_file, nfsexport_file_tmp)
 
-def encap_share():
-    """将界面或命令行输入的参数封装为share dictionary"""
-    share = {}
 
-    returen share
+#def encap_share():
+#    """将界面或命令行输入的参数封装为share dictionary"""
+#    share = {}
+#
+#    returen share
+
+
+def NFS_Restart():
+    subprocess.run(["systemctl", "restart", "nfs-server"])
+
+
 
 ##test code
-testshare = Exportconfig()
-print(testshare.load())
-print(testshare.shares)
 
-print('/tmp' in testshare.shares)
+testshare = Exportconfig()
+
+print(testshare.load())
+testshare.add_share({'share_path':'/cephfs/test0', 'share_clients':{'192.168.191.0/24': ["rw","fsid=0","sync"]}})
+testshare.add_share({'share_path':'/cephfs/test1', 'share_clients':{'192.168.191.144': ["rw","fsid=1","sync"], '192.168.191.145': ["rw","fsid=1","sync"]}})
+#testshare.remove_share('/cephfs/test1')
+#testshare.remove_share('/cephfs/test0')
+print(testshare.shares)
+testshare.update_nfs_exports(NFSEXPORT_FILE, NFSEXPORT_FILE_BAK, NFSEXPORT_FILE_BAK)
+NFS_Restart()
+print(testshare.load())
