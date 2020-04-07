@@ -1,13 +1,48 @@
 import cephfs
-Conf_File = '/etc/ceph/ceph.conf'
 
-def setup_cephfs(Conf_File):
+#Conf_File = '/etc/ceph/ceph.conf'
+cephfs_h = None
+
+def setup_cephfs():
     ##与cephfs建立连接
-    global testcephfs
-    testcephfs = cephfs.LibCephFS(conffile=Conf_File)
-    testcephfs.mount()
+    global cephfs_h
+    cephfs_h = cephfs.LibCephFS(conffile='')
+    cephfs_h.mount()
 
-setup_cephfs(Conf_File)
+def unmount_cephfs():
+    global cephfs_h
+    cephfs_h.unmount()
+
+def teardown_cephfs():
+    global cephfs_h
+    cephfs_h.shutdown()
+
+def set_quota(path, value):
+    global cephfs_h
+    cephfs_h.setxattr(path, 'ceph.quota.max_bytes', value.encode('utf-8'), 1)
+
+
+
+##对于新建共享，首先需要创建一个directory
+def create_directory(path, perms):
+    """
+    :param path: 指定目录路径，从cephfs的根开始
+    :param perms: 目录权限
+    :return:
+    """
+    #当目录存在时，无法创建成功，需抛出异常信息
+    global cephfs_h
+    try:
+        cephfs_h.mkdir(path, perms)
+    except Exception:
+        print("Error in mkdir. The directory %s Exists" %(path))
+
+
+
+
+
+
+#setup_cephfs(Conf_File)
 #创建一个文件夹， 在cephfs的root目录下，目录权限为777
 #testcephfs.mkdir('/testpythonmake', 777)
 
@@ -16,14 +51,16 @@ setup_cephfs(Conf_File)
 ##帮助文档中setxattr有3个参数，但实际会报错，最后一位参数不知道是什么，没有说明
 ##根据cephfs.pyx,最后一个参数为flags， "flags： set of option makes that control how the file is created/opened)
 ##如果flags为空，则cephfs_flags为readonly
-path = '/testpythonmake'
-value = '180000000'
+"""
+path = '/test0'
+value = '1024000000'
 testcephfs.setxattr(path, 'ceph.quota.max_bytes', value.encode('utf-8'), 1)
 print(testcephfs.getxattr(path, 'ceph.quota.max_bytes'))
 
 #获取子目录的容量quota
-fsquota = testcephfs.getxattr('/testpythonmake', 'ceph.quota.max_bytes')
+fsquota = testcephfs.getxattr(path, 'ceph.quota.max_bytes')
 print(fsquota)
+"""
 
 ###获取状态信息
 
@@ -39,5 +76,3 @@ st
 """
 
 
-##所有操作执行完成后应该unmount
-testcephfs.shutdown()

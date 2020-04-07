@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-import threading
 import os
 import shutil
-import subprocess
-import shlex
+import Service_Cntl as nfs_cntl
+import ceph.testcephfs as cephfs_conf
 
 """基本配置信息"""
 NFSEXPORT_FILE = '/etc/exports'
@@ -146,21 +145,41 @@ def Exportconfig_tmp(nfsexport_file, nfsexport_file_tmp):
 #    returen share
 
 
-def NFS_Restart():
-    subprocess.run(["systemctl", "restart", "nfs-server"])
 
-
-
-##test code
-
+##test code for nfs update,including add and remove nfs share entry ,and reload nfs service
+### 测试成功：2020.04.07
+"""
 testshare = Exportconfig()
 
 print(testshare.load())
-testshare.add_share({'share_path':'/cephfs/test0', 'share_clients':{'192.168.191.0/24': ["rw","fsid=0","sync"]}})
-testshare.add_share({'share_path':'/cephfs/test1', 'share_clients':{'192.168.191.144': ["rw","fsid=1","sync"], '192.168.191.145': ["rw","fsid=1","sync"]}})
-#testshare.remove_share('/cephfs/test1')
-#testshare.remove_share('/cephfs/test0')
+testshare.add_share({'share_path':'/cephfs_test0', 'share_clients':{'192.168.191.0/24': ["rw","fsid=0","sync"]}})
+testshare.add_share({'share_path':'/cephfs_test1', 'share_clients':{'192.168.191.144': ["rw","fsid=1","sync"], '192.168.191.145': ["rw","fsid=1","sync"]}})
+testshare.remove_share('/cephfs_test1')
+testshare.remove_share('/cephfs_test0')
+
 print(testshare.shares)
 testshare.update_nfs_exports(NFSEXPORT_FILE, NFSEXPORT_FILE_BAK, NFSEXPORT_FILE_BAK)
-NFS_Restart()
+nfs_cntl.NFS_Restart()
 print(testshare.load())
+"""
+#####test code for quota config
+### 测试成功：2020.04.07
+"""
+path = '/test0'
+value = '2048000000'
+cephfs_conf.setup_cephfs()
+cephfs_conf.set_quota(path, value)
+cephfs_conf.teardown_cephfs()
+"""
+
+###test code for cephfs mkdir
+###可正常抛出目录已经存在的异常
+### 测试成功：2020.04.07
+"""
+path = '/testbymkdir'
+perms = 0o777
+cephfs_conf.setup_cephfs()
+cephfs_conf.create_directory(path, perms)
+cephfs_conf.teardown_cephfs()
+"""
+###接下来需要进行逻辑整合，创建一个共享通常分为两步：创建目录与设置共享  ---update: 2020.04.07
