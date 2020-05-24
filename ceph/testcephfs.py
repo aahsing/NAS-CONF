@@ -42,9 +42,16 @@ def create_directory(path, perms):
 
 
 
-#setup_cephfs(Conf_File)
+
+
+setup_cephfs()
 #创建一个文件夹， 在cephfs的root目录下，目录权限为777
-#testcephfs.mkdir('/testpythonmake', 777)
+cephfs_h.mkdir('/TEST8', 0o777)
+cephfs_h.mkdir('/test8', 0o777)
+#test=cephfs_h.stat(b'/jc/c01/abcdd/')
+#print(test)
+
+teardown_cephfs()
 
 
 ##设置quota
